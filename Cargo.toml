@@ -1,0 +1,12 @@
+[package]
+name = "bevy_mod_system_tools"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+bevy_ecs = "0.8"
+bevy_log = "0.8"
+bevy_mod_system_tools_macros = { path = "./macros_impl", version = "1.0.0" }
+
+[dev-dependencies]
+bevy = "0.8"
