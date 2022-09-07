@@ -132,9 +132,10 @@ site, and not when adding to the app. As a result, it's easy to see at a glance
 what kind of error handling is happening in the system, it also allows using
 the system name as a label in system dependency specification.
 
-The `sysfail` attribute can only be used on systems returning a type
-implementing the `Failure` trait. `Failure` is implemented for 
-`sysfail` takes a single argument, it is one of the following:
+The [`sysfail`] attribute can only be used on systems returning a type
+implementing the [`Failure`] trait. [`Failure`] is implemented for 
+`Result<(), impl FailureMode>` and `Option<()>`.
+[`sysfail`] takes a single argument, it is one of the following:
 
 - `log`: print the `Err` of the `Result` return value, prints a very
   generic "A none value" when the return type is `Option`.
