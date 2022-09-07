@@ -1,7 +1,11 @@
-## Bevy system error handling macros
+## Bevy system error handling 
 
-Decorate your system with the [`sysfail`] macro attribute
-to make them handle cleanly failure mods.
+[![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
+[![Latest version](https://img.shields.io/crates/v/bevy_mod_sysfail.svg)](https://crates.io/crates/bevy_mod_sysfail)
+[![Apache 2.0](https://img.shields.io/badge/license-Apache-blue.svg)](./LICENSE)
+[![Documentation](https://docs.rs/bevy_mod_sysfail/badge.svg)](https://docs.rs/bevy_mod_sysfail/)
+
+Decorate your bevy system with the [`sysfail`] macro attribute to handle failure.
 
 #### Before
 
