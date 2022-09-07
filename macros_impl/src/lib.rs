@@ -1,78 +1,159 @@
 use std::error::Error;
 
+use darling::FromMeta;
 use proc_macro::TokenStream as TokenStream1;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, token::Paren, AttributeArgs, Expr, FnArg, ItemFn,
-    Lit, Meta, MetaNameValue, NestedMeta, Path, PathSegment, ReturnType, Type, TypeTuple,
+    parse_macro_input, punctuated::Punctuated, token::Paren, AttributeArgs, FnArg, ItemFn,
+    ReturnType, Stmt, TypeTuple,
 };
 
+/// `sysfail` is an attribute macro you can slap on top of your systems to define
+/// the handling of errors.
+///
+/// If you are lazy and don't care about the return value, use [`quick_sysfail`].
+///
+/// Unlike `chain`, this is done directly at the definition
+/// site, and not when adding to the app. As a result, it's easy to see at a glance
+/// what kind of error handling is happening in the system, it also allows using
+/// the system name as a label in system dependency specification.
+///
+/// The `sysfail` attribute can only be used on systems returning a type
+/// implementing the `Failure` trait. `Failure` is implemented for
+/// `sysfail` takes a single argument, it is one of the following:
+///
+/// - `log`: print the `Err` of the `Result` return value, prints a very
+///   generic "A none value" when the return type is `Option`.
+///   By default, most things are logged at `Warn` level, but it is
+///   possible to customize the log level based on the error value.
+/// - `log(level = "{silent,trace,debug,info,warn,error}")`: This forces
+///   logging of errors at a certain level (make sure to add the quotes)
+/// - `ignore`: This is like `log(level="silent")` but simplifies the
+///   generated code.
+///
+/// Note that with `log`, the macro generates a new system with additional
+/// parameters.
+///
+/// [`quick_sysfail`]: macro@quick_sysfail
 #[proc_macro_attribute]
-pub fn sys_chain(attr: TokenStream1, input: TokenStream1) -> TokenStream1 {
+pub fn sysfail(attr: TokenStream1, input: TokenStream1) -> TokenStream1 {
     // <this> in `#[sys_chain(<this>)]`
-    let attr = parse_macro_input!(attr as AttributeArgs);
     // We expect a function always
     let input = parse_macro_input!(input as ItemFn);
-    ChainStyle::try_from(attr)
-        .expect("3")
-        .impl_failable(input)
-        .expect("4")
-        .into()
+    let attr = parse_macro_input!(attr as AttributeArgs);
+    let attr = Sysfail::from_args(&attr).expect("11");
+    attr.chain_style().impl_sysfail(input).expect("4").into()
 }
 
-macro_rules! path_ident {
-    ($value:expr, $ident_name:literal) => {
-        matches!(
-            $value,
-            NestedMeta::Meta(Meta::Path( Path { segments, .. } ))
-                if segments.first().map_or(false, |t| t.ident == $ident_name)
-        )
-    }
+#[derive(FromMeta)]
+struct Log {
+    level: Option<Ident>,
 }
-macro_rules! foo {
-    ($value:expr, $ident_name:literal) => {
-        matches!(
-            $value,
-            NestedMeta::Meta(Meta::NameValue( MetaNameValue {
-                path: Path { segments, .. },
-                ..
-            } ))
-                if segments.first().map_or(false, |t| t.ident == $ident_name)
-        )
-    }
+#[derive(FromMeta)]
+struct Sysfail {
+    ignore: Option<()>,
+    log: Option<Log>,
 }
-macro_rules! bar {
-    ($value:expr, |$binding:ident| $body:expr) => {
-        if let NestedMeta::Meta(Meta::NameValue(MetaNameValue { lit: $binding, .. })) = $value {
-            $body
-        } else {
-            unreachable!()
+#[derive(FromMeta)]
+struct SysfailAlt {
+    log: Option<()>,
+}
+impl From<SysfailAlt> for Sysfail {
+    fn from(alt: SysfailAlt) -> Self {
+        Self {
+            ignore: None,
+            log: alt.log.map(|()| Log { level: None }),
         }
-    };
+    }
+}
+impl Sysfail {
+    fn from_args(attr: &AttributeArgs) -> Result<Self, Box<dyn std::error::Error>> {
+        // handle "log" without arguments.
+        let word_log = |_| Ok(SysfailAlt::from_list(attr)?.into());
+        Self::from_list(attr).or_else(word_log)
+    }
+    fn chain_style(&self) -> ChainStyle {
+        match (&self.log, self.ignore.is_some()) {
+            (Some(Log { level }), false) => match level {
+                Some(level) => ChainStyle::from_ident(level),
+                None => ChainStyle::no_override(),
+            },
+            (None, true) => ChainStyle::Ignore,
+            (None, false) => todo!("TODO: handle when no explicit chain style is selected"),
+            (Some(_), true) => todo!("TODO: handle when too many explicit chain style is selected"),
+        }
+    }
 }
 
-enum ChainStyle {
-    Log,
-    Ignore,
-    // System(Expr, Type),
-    Level(Lit),
-    Cooldown(Lit),
-    // Both { level: Expr, cooldown: Expr },
+/// `quick_sysfail` is like [`sysfail(ignore)`] but only works on `Option<()>`.
+///
+/// This attribute, unlike `sysfail` allows you to elide the final `Some(())`
+/// and the type signature of the system. It's for the maximally lazy, like
+/// me.
+///
+/// ## Example
+///
+/// ```rust
+/// use bevy_mod_sysfail::macros::*;
+///
+/// #[sysfail(ignore)]
+/// fn place_gizmo() -> Option<()> {
+///   // …
+///   Some(())
+/// }
+/// // equivalent to:
+/// #[quick_sysfail]
+/// fn quick_place_gizmo() {
+///   // …
+/// }
+/// ```
+///
+/// [`sysfail(ignore)`]: macro@sysfail
+#[proc_macro_attribute]
+pub fn quick_sysfail(_: TokenStream1, input: TokenStream1) -> TokenStream1 {
+    let mut input = parse_macro_input!(input as ItemFn);
+    add_option(&mut input);
+    ChainStyle::Ignore.impl_sysfail(input).expect("8").into()
 }
-impl TryFrom<AttributeArgs> for ChainStyle {
-    type Error = ();
-    fn try_from(args: AttributeArgs) -> Result<Self, ()> {
-        // in `#[sys_chain(<a>, <b>)]`, args has two values
-        let value = args.first().ok_or(())?;
-        match () {
-            () if path_ident!(value, "log") => Ok(ChainStyle::Log),
-            () if path_ident!(value, "ignore") => Ok(ChainStyle::Ignore),
-            () if foo!(value, "cooldown") => {
-                bar!(value, |cooldown| Ok(ChainStyle::Cooldown(cooldown.clone())))
-            }
-            () if foo!(value, "level") => bar!(value, |level| Ok(ChainStyle::Level(level.clone()))),
-            _ => Err(()),
+fn add_option(system: &mut ItemFn) {
+    let stmts = &mut system.block.stmts;
+    stmts.push(Stmt::Expr(
+        syn::parse2(quote!(Option::Some(()))).expect("9"),
+    ));
+    system.sig.output = syn::parse2(quote!(-> Option<()>)).expect("10");
+}
+
+#[derive(Debug, Clone, Copy)]
+enum LogLevel {
+    /// Never log anything
+    Silent,
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+enum ChainStyle {
+    Log { set_level: Option<LogLevel> },
+    Ignore,
+}
+impl ChainStyle {
+    const fn no_override() -> Self {
+        Self::Log { set_level: None }
+    }
+    fn from_ident(level: &Ident) -> Self {
+        let level = match () {
+            () if level == "silent" => LogLevel::Silent,
+            () if level == "trace" => LogLevel::Trace,
+            () if level == "debug" => LogLevel::Debug,
+            () if level == "info" => LogLevel::Info,
+            () if level == "warn" => LogLevel::Warn,
+            () if level == "error" => LogLevel::Error,
+            () => todo!("TODO: handle unsupported log level"),
+        };
+        Self::Log {
+            set_level: Some(level),
         }
     }
 }
@@ -80,6 +161,8 @@ impl TryFrom<AttributeArgs> for ChainStyle {
 impl ChainStyle {
     /// The system
     fn handler_inputs(&self, sys_output: &ReturnType) -> Result<Vec<FnArg>, Box<dyn Error>> {
+        use ChainStyle::{Ignore, Log};
+        use LogLevel::Silent;
         let default_output = Box::new(
             TypeTuple {
                 paren_token: Paren::default(),
@@ -92,51 +175,68 @@ impl ChainStyle {
             ReturnType::Type(_, ty) => ty,
         };
         match self {
-            ChainStyle::Log => Ok(vec![
-                syn::parse(
-                    quote! {
-                    mut last_error_occurence: ::bevy::ecs::prelude::Local<
+            Ignore
+            | Log {
+                set_level: Some(Silent),
+            } => Ok(Vec::new()),
+
+            Log { .. } => Ok(vec![
+                syn::parse2(quote! {
+                    mut _last_error_occurence_bevy_mod_sysfail: ::bevy::ecs::prelude::Local<
                         ::bevy::utils::HashMap<
                             < < #sys_output
-                                as ::bevy_mod_system_tools::traits::Failure>::Error
-                                as ::bevy_mod_system_tools::traits::FailureMode>::ID,
+                                as ::bevy_mod_sysfail::traits::Failure>::Error
+                                as ::bevy_mod_sysfail::traits::FailureMode>::ID,
                             ::bevy::utils::Duration,
                         >,
                     >
-                    }
-                    .into(),
-                )
+                })
                 .expect("5"),
-                syn::parse(quote!(time: ::bevy::ecs::prelude::Res<::bevy::time::Time>).into())
-                    .expect("6"),
+                syn::parse2(quote!(
+                    _time_bevy_mod_sysfail: ::bevy::ecs::prelude::Res<::bevy::time::Time>
+                ))
+                .expect("6"),
             ]),
-            ChainStyle::Ignore => Ok(Vec::new()),
-            ChainStyle::Level(_) => Ok(Vec::new()),
-            ChainStyle::Cooldown(_) => Ok(Vec::new()),
         }
     }
     fn handler_body(&self, result: &Ident) -> TokenStream {
-        let default_cooldown = quote!(::bevy::utils::Duration::from_secs(1));
+        use ChainStyle::{Ignore, Log};
+        use LogLevel::Silent;
         match self {
-            ChainStyle::Log => quote! {
-                use ::bevy_mod_system_tools::{traits::*, LogLevel};
-                let current = time.time_since_startup();
-                let show_again = |last_show: &::bevy::utils::Duration|
-                    *last_show < current.saturating_sub(#default_cooldown);
-                if let Some(error) = #result.error() {
-                    let error_id = error.identify();
-                    if last_error_occurence.get(&error_id).map_or(true, show_again) {
-                        error.log();
+            Ignore
+            | Log {
+                set_level: Some(Silent),
+            } => quote!(let _ = #result;),
+
+            Log { set_level } => {
+                let extra = match set_level {
+                    Some(LogLevel::Silent) => quote!(.silent()),
+                    Some(LogLevel::Trace) => quote!(.trace()),
+                    Some(LogLevel::Debug) => quote!(.debug()),
+                    Some(LogLevel::Info) => quote!(.info()),
+                    Some(LogLevel::Warn) => quote!(.warn()),
+                    Some(LogLevel::Error) => quote!(.error()),
+                    None => quote!(),
+                };
+                quote! {
+                    use ::bevy_mod_sysfail::traits::*;
+                    let current = _time_bevy_mod_sysfail.time_since_startup();
+                    let show_again = |last_show: &::bevy::utils::Duration, cooldown|
+                        *last_show < current.saturating_sub(cooldown);
+                    if let Some(error) = #result.failure() {
+                        let error_id = error.identify();
+                        let show_again = |last_show| show_again(last_show, error.cooldown());
+                        let last_occurences = &mut _last_error_occurence_bevy_mod_sysfail;
+                        if last_occurences.get(&error_id).map_or(true, show_again) {
+                            error #extra .log();
+                        }
+                        last_occurences.insert(error_id, current);
                     }
-                    last_error_occurence.insert(error_id, current);
                 }
-            },
-            ChainStyle::Ignore => quote!(let _ = #result;),
-            ChainStyle::Level(_) => todo!(),
-            ChainStyle::Cooldown(_) => todo!(),
+            }
         }
     }
-    fn impl_failable(&self, mut ast: ItemFn) -> Result<TokenStream, Box<dyn Error>> {
+    fn impl_sysfail(&self, mut ast: ItemFn) -> Result<TokenStream, Box<dyn Error>> {
         let result = Ident::new("result", Span::call_site());
         let chain_body = self.handler_body(&result);
         let system_body = ast.block;
@@ -144,14 +244,11 @@ impl ChainStyle {
         ast.sig
             .inputs
             .extend(self.handler_inputs(system_output).expect("7"));
-        ast.block = syn::parse(
-            quote! { {
-                    let original_system = move || #system_output #system_body ;
-                    let #result = original_system();
-                    #chain_body
-            } }
-            .into(),
-        )
+        ast.block = syn::parse2(quote! { {
+                let original_system = move || #system_output #system_body ;
+                let #result = original_system();
+                #chain_body
+        } })
         .expect("1");
         ast.sig.output = ReturnType::Default;
         Ok(quote!(#ast))

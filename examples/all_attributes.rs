@@ -1,51 +1,42 @@
-use bevy::{prelude::*, transform::TransformSystem};
-use bevy_mod_system_tools::sys_chain;
+use bevy::prelude::*;
+use bevy_mod_sysfail::macros::*;
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 enum GizmoError {
+    #[error("A Gizmo error")]
     Error,
 }
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
-        .add_system(drag_gizmo.before(TransformSystem::TransformPropagate))
-        .add_system(
-            place_gizmo
-                .after(TransformSystem::TransformPropagate)
-                .after(drag_gizmo),
-        );
+        .add_system(drag_gizmo)
+        .add_system(delete_gizmo.after(place_gizmo))
+        .add_system(place_gizmo.after(drag_gizmo));
     app.update();
 }
 
-// type DifferentErrorHandlingType = SystemType!(
-//   fn different_error_handling(
-//       In(result): In<Result<(), GizmoError>>,
-//       mut last_error_occurence: Local<HashMap<GizmoError, Duration>>,
-//       time: Res<Time>,
-//   )
-// );
-// fn different_error_handling(
-//     In(result): In<Result<(), GizmoError>>,
-//     mut last_error_occurence: Local<HashMap<GizmoError, Duration>>,
-//     time: Res<Time>,
-// ) {
-//     // A different, custom handling of errors
-// }
+#[sysfail(log)]
+fn drag_gizmo(time: Res<Time>) -> Result<(), anyhow::Error> {
+    println!("drag time is: {}", time.seconds_since_startup());
+    let _ = Err(GizmoError::Error)?;
+    println!("This will never print");
+    Ok(())
+}
 
-#[sys_chain(log)]
-fn drag_gizmo() -> Result<(), ()> {
-    let _ = Err(())?;
+#[sysfail(log(level = "info"))]
+fn place_gizmo() -> Result<(), &'static str> {
+    let () = Result::<(), &'static str>::Ok(())?;
+    println!("this line should actually show up");
+    let _ = Err("Ah, some creative use of info logging I see")?;
     Ok(())
 }
-#[sys_chain(log)]
-fn place_gizmo() -> Result<(), ()> {
-    let _ = Err(())?;
-    Ok(())
-}
-// #[sys_chain(system(different_error_handling: DifferentErrorHandlingType))]
-// #[sys_chain(ignore = Duration::from_sec(30))]
-#[sys_chain(ignore)]
-fn delete_gizmo() -> Option<()> {
+
+#[quick_sysfail]
+fn delete_gizmo(time: Res<Time>) {
+    println!("delete time is: {}", time.seconds_since_startup());
     let _ = None?;
-    Some(())
+    println!("This will never print");
 }

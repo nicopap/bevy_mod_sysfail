@@ -1,38 +1,49 @@
 ## Bevy system error handling macros
 
-
-Decorate your system with the `failable` macro attribute
+Decorate your system with the [`sysfail`] macro attribute
 to make them handle cleanly failure mods.
 
 #### Before
 
 ```rust
+use bevy::prelude::*;
+use bevy::utils::Duration;
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum GizmoError {
+    #[error("A Gizmo error")]
+    Error,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, SystemLabel)]
+enum TransformGizmoSystem { Drag, Place }
+
 fn main() {
-  // app boilerplate
-  app.add_system(
-    drag_gizmo
-      .chain(print_gizmo_error)
-      .label(TransformGizmoSystem::Drag)
-      .before(TransformSystem::TransformPropagate),
-  )
-  .add_system(
-    place_gizmo
-      .chain(print_gizmo_error)
-      .label(TransformGizmoSystem::Place)
-      .after(TransformSystem::TransformPropagate)
-      .after(TransformGizmoSystem::Drag),
-  )
-  .add_system(
-    delete_gizmo
-      .chain(different_error_handling)
-      .after(TransformGizmoSystem::Place),
-  );
-  app.run();
+    let mut app = App::new();
+    app.add_plugin(bevy::time::TimePlugin)
+        .add_system(
+            drag_gizmo
+                .chain(print_gizmo_error)
+                .label(TransformGizmoSystem::Drag),
+        )
+        .add_system(
+            delete_gizmo
+                .chain(|In(_)| {})
+                .after(TransformGizmoSystem::Place))
+        .add_system(
+            place_gizmo
+                .chain(print_gizmo_error)
+                .label(TransformGizmoSystem::Place)
+                .after(TransformGizmoSystem::Drag),
+        );
+    app.update();
 }
 
 fn print_gizmo_error(
-    In(result): In<Result<(), GizmoError>>,
-    mut last_error_occurence: Local<HashMap<GizmoError, Duration>>,
+    In(result): In<Result<(), Box<dyn std::error::Error>>>,
+    mut last_error_occurence: Local<Option<Duration>>,
     time: Res<Time>,
 ) {
   // error boilerplate, may include
@@ -40,134 +51,155 @@ fn print_gizmo_error(
   // - Formatting and chosing the log level
 }
 
-fn different_error_handling(
-    In(result): In<Result<(), GizmoError>>,
-    mut last_error_occurence: Local<HashMap<GizmoError, Duration>>,
-    time: Res<Time>,
-) {
-  // A different, custom handling of errors
+fn drag_gizmo(time: Res<Time>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("drag time is: {}", time.seconds_since_startup());
+    let _ = Err(GizmoError::Error)?;
+    println!("This will never print");
+    Ok(())
 }
 
-fn drag_gizmo(…) -> Result<(), GizmoError> {
-  // …
-  Ok(())
+fn place_gizmo() -> Result<(), Box<dyn std::error::Error>> {
+    let () = Result::<(), &'static str>::Ok(())?;
+    println!("this line should actually show up");
+    let _ = Err("Ah, some creative use of info logging I see")?;
+    Ok(())
 }
-fn place_gizmo(…) -> Result<(), GizmoError> {
-  // …
-  Ok(())
-}
-fn delete_gizmo(…) -> Result<(), GizmoError> {
-  // …
-  Ok(())
+
+fn delete_gizmo(time: Res<Time>) -> Option<()> {
+    println!("delete time is: {}", time.seconds_since_startup());
+    let _ = None?;
+    println!("This will never print");
+    Some(())
 }
 ```
 
 #### After
 
 ```rust
+use bevy::prelude::*;
+use bevy_mod_sysfail::macros::*;
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum GizmoError {
+    #[error("A Gizmo error")]
+    Error,
+}
+
 fn main() {
-  app.add_system(
-    drag_gizmo.before(TransformSystem::TransformPropagate),
-  )
-  .add_system(
-    place_gizmo
-      .after(TransformSystem::TransformPropagate)
-      .after(drag_gizmo),
-  )
+    let mut app = App::new();
+    app.add_plugin(bevy::time::TimePlugin)
+        .add_system(drag_gizmo)
+        .add_system(delete_gizmo.after(place_gizmo))
+        .add_system(place_gizmo.after(drag_gizmo));
+    app.update();
 }
 
-type DifferentErrorHandlingType = SystemType!(
-  fn different_error_handling(
-      In(result): In<Result<(), GizmoError>>,
-      mut last_error_occurence: Local<HashMap<GizmoError, Duration>>,
-      time: Res<Time>,
-  )
-);
-fn different_error_handling(
-    In(result): In<Result<(), GizmoError>>,
-    mut last_error_occurence: Local<HashMap<GizmoError, Duration>>,
-    time: Res<Time>,
-) {
-  // A different, custom handling of errors
+#[sysfail(log)]
+fn drag_gizmo(time: Res<Time>) -> Result<(), anyhow::Error> {
+    println!("drag time is: {}", time.seconds_since_startup());
+    let _ = Err(GizmoError::Error)?;
+    println!("This will never print");
+    Ok(())
 }
 
-#[failable(log)]
-fn drag_gizmo(…) -> Result<(), GizmoError> {
-  // …
-  Ok(())
+#[sysfail(log(level = "info"))]
+fn place_gizmo() -> Result<(), &'static str> {
+    let () = Result::<(), &'static str>::Ok(())?;
+    println!("this line should actually show up");
+    let _ = Err("Ah, some creative use of info logging I see")?;
+    Ok(())
 }
-#[failable(log)]
-fn place_gizmo(…) -> Result<(), GizmoError> {
-  // …
-  Ok(())
-}
-#[failable(system(different_error_handling: DifferentErrorHandlingType))]
-fn delete_gizmo(…) -> Result<(), GizmoError> {
-  // …
-  Ok(())
+
+#[quick_sysfail]
+fn delete_gizmo(time: Res<Time>) {
+    println!("delete time is: {}", time.seconds_since_startup());
+    let _ = None?;
+    println!("This will never print");
 }
 ```
 
-Under the hood `failable` defines the system inside another system.
+### `sysfail` attribute
 
-### `failable` attribute arguments
+[`sysfail`] is an attribute macro you can slap on top of your systems to define
+the handling of errors. Unlike `chain`, this is done directly at the definition
+site, and not when adding to the app. As a result, it's easy to see at a glance
+what kind of error handling is happening in the system, it also allows using
+the system name as a label in system dependency specification.
 
-- `log`: print the `Err` side of `Result` returns,
-  and the system name when `None`. Equivalent to `level(LogLevel::Warn)`
-- `ignore`: just do literally nothing with the return value.
-- `level = l`, l: `LogLevel`: Print errors with a provided level.
-- `cooldown = d`, d: `Duration`: How much time to allow between reprinting
-  of the same error, defaults to one second.
-- `system(s: s_type)`, s: `impl SystemParamFunction`, s_type: type of `s`:
-  Use a custom system provided as argument. The system type must be provided
-  for this to work. This is a limitation of rust. For your convinience, the
-  `SystemType!` macro let you copy/paste the system's type signature.
-- You can combine `level` and `cooldown` as follow:
-  `#[failable(level = LogLevel::Warn, cooldown = Duration::from_secs(10.0)))]`.
+The `sysfail` attribute can only be used on systems returning a type
+implementing the `Failure` trait. `Failure` is implemented for 
+`sysfail` takes a single argument, it is one of the following:
 
-Note that if the provided handling system as more than the `In` parameter,
-or if you are not using the `ignore` option, the system will have a different
-type signature than the one declared.
+- `log`: print the `Err` of the `Result` return value, prints a very
+  generic "A none value" when the return type is `Option`.
+  By default, most things are logged at `Warn` level, but it is
+  possible to customize the log level based on the error value.
+- `log(level = "{silent,trace,debug,info,warn,error}")`: This forces
+  logging of errors at a certain level (make sure to add the quotes)
+- `ignore`: This is like `log(level="silent")` but simplifies the
+  generated code.
 
-### `FailureMode` trait
+Note that with `log`, the macro generates a new system with additional
+parameters.
+
+### `quick_sysfail` attribute
+
+[`quick_sysfail`] is like `sysfail(ignore)` but only works on `Option<()>`.
+This attribute, unlike `sysfail` allows you to elide the final `Some(())`
+and the type signature of the system. It's for the maximally lazy, like
+me.
 
 ```rust
-enum LogLevel {
-  /// Never log anything
-  Silent,
-  Trace,
-  Debug,
-  Info,
-  Warn,
-  Error,
-}
-trait FailureMode {
-  fn log_level(&self) -> LogLevel;
-}
-```
+use bevy_mod_sysfail::macros::*;
 
-`FailureMode` let you chose the log level of your errors in the `log`
-error handling style.
-
-Anything that implements `Error` will implement `FailureMode`
-and be logged with `warn!`. `warn!` is the default because the
-the app keeps working even after the early return.
-
-`bevy_mod_system_tools` provides an extension trait to `Result` and `Option` to change
-the log level of error. Use the `warn`, `trace`, `debug`, `silent` and `info` specify
-the level of logging of an error.
-
-```rust
-#[failable(default)]
-fn place_gizmo(
-  mut baz: Query<&mut Baz>,
-  bar: Query<&Bar>,
-  oz: Query<&Oz>,
-) {
+#[sysfail(ignore)]
+fn place_gizmo() -> Option<()> {
   // …
-  let mut my_baz = baz.get_single_mut().trace()?;
-  let my_bar = bar.get_single()?;
-  let my_oz = oz.get_single().silent()?;
+  Some(())
+}
+// equivalent to:
+#[quick_sysfail]
+fn quick_place_gizmo() {
   // …
 }
 ```
+
+### Traits
+
+How error is handled is not very customizable, but there is a few behaviors
+controllable by the user, always through traits.
+
+#### `Failure` trait
+
+[`Failure`] is implemented for `Result<(), impl FailureMode>` and `Option<()>`.
+
+Systems marked with the [`sysfail`] attribute **must** return a type implementing
+[`Failure`].
+
+#### `FailureMode` trait
+
+[`FailureMode`] defines how the failure is handled. By implementing the
+trait on your own error types, you can specify:
+
+- What constitutes "distinct" error types.
+- The log level of specific values.
+- How long an error must not be produced in order to be displayed again.
+
+- [ ] TODO: provide a derive macro that allows setting log level and cooldown.
+
+[`FailureMode`] is implemented for `Box<dyn Error>`, `anyhow::Error`, `()`
+and `&'static str`.
+
+#### `LogLevelOverride` trait
+
+[`LogLevelOverride`] is an extension trait that allows you to override the 
+log level of a failure. Use the `warn`, `trace`, `debug`, `silent`,
+`error` and `info` methods to specify the level of logging of a failure.
+
+[`FailureMode`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.FailureMode.html
+[`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.LogLevelOverride.html
+[`Failure`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.Failure.html
+[`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/attr.quick_sysfail.html
+[`sysfail`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/attr.sysfail.html

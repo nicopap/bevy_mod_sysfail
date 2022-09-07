@@ -1,12 +1,14 @@
 [package]
-name = "bevy_mod_system_tools"
-version = "1.0.0"
+name = "bevy_mod_sysfail"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy_ecs = "0.8"
+bevy_utils = "0.8"
 bevy_log = "0.8"
-bevy_mod_system_tools_macros = { path = "./macros_impl", version = "1.0.0" }
+bevy_mod_sysfail_macros = { path = "./macros_impl", version = "0.1.0" }
+anyhow = { version = "1.0", default-features = false }
 
 [dev-dependencies]
 bevy = "0.8"
+thiserror = "1.0"
