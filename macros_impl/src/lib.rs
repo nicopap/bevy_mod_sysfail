@@ -23,7 +23,7 @@ use syn::{
 /// implementing the `Failure` trait. `Failure` is implemented for
 /// `sysfail` takes a single argument, it is one of the following:
 ///
-/// - `log`: print the `Err` of the `Result` return value, prints a very
+/// - `log`: print the `Err` of the `Result` return value. Prints a very
 ///   generic "A none value" when the return type is `Option`.
 ///   By default, most things are logged at `Warn` level, but it is
 ///   possible to customize the log level based on the error value.

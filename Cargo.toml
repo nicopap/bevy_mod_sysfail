@@ -1,5 +1,13 @@
 [package]
 name = "bevy_mod_sysfail"
+authors = ["Nicola Papale"]
+description = "Decorate your bevy system with the sysfail macro attribute to handle failure."
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["bevy", "tool", "macro", "error", "trait"]
+categories = ["game-development"]
+repository = "https://github.com/nicopap/bevy_mod_sysfail"
+exclude = ["assets", ".github"]
 version = "0.1.0"
 edition = "2021"
 

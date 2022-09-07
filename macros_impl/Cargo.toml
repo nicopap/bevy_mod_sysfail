@@ -1,5 +1,13 @@
 [package]
 name = "bevy_mod_sysfail_macros"
+authors = ["Nicola Papale"]
+description = "Macros for bevy_mod_sysfail"
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["bevy", "tool", "macro"]
+categories = ["game-development"]
+repository = "https://github.com/nicopap/bevy_mod_sysfail"
+exclude = ["assets", ".github"]
 version = "0.1.0"
 edition = "2021"
 

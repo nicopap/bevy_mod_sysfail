@@ -198,6 +198,13 @@ and `&'static str`.
 log level of a failure. Use the `warn`, `trace`, `debug`, `silent`,
 `error` and `info` methods to specify the level of logging of a failure.
 
+## License
+
+Copyright © 2022 Nicola Papale
+
+This software is licensed under Apache 2.0.
+
+
 [`FailureMode`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.FailureMode.html
 [`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.LogLevelOverride.html
 [`Failure`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.Failure.html
