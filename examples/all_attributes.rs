@@ -20,7 +20,7 @@ fn main() {
 
 #[sysfail(log)]
 fn drag_gizmo(time: Res<Time>) -> Result<(), anyhow::Error> {
-    println!("drag time is: {}", time.seconds_since_startup());
+    println!("drag time is: {}", time.elapsed_seconds());
     let _ = Err(GizmoError::Error)?;
     println!("This will never print");
     Ok(())
@@ -36,7 +36,7 @@ fn place_gizmo() -> Result<(), &'static str> {
 
 #[quick_sysfail]
 fn delete_gizmo(time: Res<Time>) {
-    println!("delete time is: {}", time.seconds_since_startup());
+    println!("delete time is: {}", time.elapsed_seconds());
     let _ = None?;
     println!("This will never print");
 }

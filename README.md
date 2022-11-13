@@ -29,16 +29,16 @@ fn main() {
     app.add_plugin(bevy::time::TimePlugin)
         .add_system(
             drag_gizmo
-                .chain(print_gizmo_error)
+                .pipe(print_gizmo_error)
                 .label(TransformGizmoSystem::Drag),
         )
         .add_system(
             delete_gizmo
-                .chain(|In(_)| {})
+                .pipe(|In(_)| {})
                 .after(TransformGizmoSystem::Place))
         .add_system(
             place_gizmo
-                .chain(print_gizmo_error)
+                .pipe(print_gizmo_error)
                 .label(TransformGizmoSystem::Place)
                 .after(TransformGizmoSystem::Drag),
         );
@@ -56,7 +56,7 @@ fn print_gizmo_error(
 }
 
 fn drag_gizmo(time: Res<Time>) -> Result<(), Box<dyn std::error::Error>> {
-    println!("drag time is: {}", time.seconds_since_startup());
+    println!("drag time is: {}", time.elapsed_seconds());
     let _ = Err(GizmoError::Error)?;
     println!("This will never print");
     Ok(())
@@ -70,7 +70,7 @@ fn place_gizmo() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn delete_gizmo(time: Res<Time>) -> Option<()> {
-    println!("delete time is: {}", time.seconds_since_startup());
+    println!("delete time is: {}", time.elapsed_seconds());
     let _ = None?;
     println!("This will never print");
     Some(())
@@ -102,7 +102,7 @@ fn main() {
 
 #[sysfail(log)]
 fn drag_gizmo(time: Res<Time>) -> Result<(), anyhow::Error> {
-    println!("drag time is: {}", time.seconds_since_startup());
+    println!("drag time is: {}", time.elapsed_seconds());
     let _ = Err(GizmoError::Error)?;
     println!("This will never print");
     Ok(())
@@ -118,7 +118,7 @@ fn place_gizmo() -> Result<(), &'static str> {
 
 #[quick_sysfail]
 fn delete_gizmo(time: Res<Time>) {
-    println!("delete time is: {}", time.seconds_since_startup());
+    println!("delete time is: {}", time.elapsed_seconds());
     let _ = None?;
     println!("This will never print");
 }
@@ -127,7 +127,7 @@ fn delete_gizmo(time: Res<Time>) {
 ### `sysfail` attribute
 
 [`sysfail`] is an attribute macro you can slap on top of your systems to define
-the handling of errors. Unlike `chain`, this is done directly at the definition
+the handling of errors. Unlike `pipe`, this is done directly at the definition
 site, and not when adding to the app. As a result, it's easy to see at a glance
 what kind of error handling is happening in the system, it also allows using
 the system name as a label in system dependency specification.
@@ -203,6 +203,17 @@ and `&'static str`.
 log level of a failure. Use the `warn`, `trace`, `debug`, `silent`,
 `error` and `info` methods to specify the level of logging of a failure.
 
+### Change log
+
+* `1.0.0`: Update to bevy `0.9`
+
+### Version Matrix
+
+| bevy | latest supporting version      |
+|------|--------|
+| 0.9  | 1.0.0 |
+| 0.8  | 0.1.0 |
+
 ## License
 
 Copyright © 2022 Nicola Papale
@@ -210,8 +221,8 @@ Copyright © 2022 Nicola Papale
 This software is licensed under Apache 2.0.
 
 
-[`FailureMode`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.FailureMode.html
-[`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.LogLevelOverride.html
-[`Failure`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/trait.Failure.html
-[`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/attr.quick_sysfail.html
-[`sysfail`]: https://docs.rs/bevy_mod_sysfail/0.1.0/bevy_mod_sysfail/attr.sysfail.html
+[`FailureMode`]: https://docs.rs/bevy_mod_sysfail/1.0.0/bevy_mod_sysfail/trait.FailureMode.html
+[`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/1.0.0/bevy_mod_sysfail/trait.LogLevelOverride.html
+[`Failure`]: https://docs.rs/bevy_mod_sysfail/1.0.0/bevy_mod_sysfail/trait.Failure.html
+[`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/1.0.0/bevy_mod_sysfail/attr.quick_sysfail.html
+[`sysfail`]: https://docs.rs/bevy_mod_sysfail/1.0.0/bevy_mod_sysfail/attr.sysfail.html

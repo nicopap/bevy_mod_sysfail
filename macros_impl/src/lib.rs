@@ -220,7 +220,7 @@ impl ChainStyle {
                 };
                 quote! {
                     use ::bevy_mod_sysfail::traits::*;
-                    let current = _time_bevy_mod_sysfail.time_since_startup();
+                    let current = _time_bevy_mod_sysfail.elapsed();
                     let show_again = |last_show: &::bevy::utils::Duration, cooldown|
                         *last_show < current.saturating_sub(cooldown);
                     if let Some(error) = #result.failure() {
