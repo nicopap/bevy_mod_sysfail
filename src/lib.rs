@@ -186,7 +186,7 @@ impl FailureMode for &'static str {
     }
     type ID = Self;
     fn identify(&self) -> Self {
-        *self
+        self
     }
     fn display(&self) -> Option<String> {
         Some((*self).to_string())

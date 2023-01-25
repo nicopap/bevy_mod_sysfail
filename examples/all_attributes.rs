@@ -3,6 +3,9 @@ use bevy_mod_sysfail::macros::*;
 
 use thiserror::Error;
 
+#[derive(Component)]
+struct Foo;
+
 #[derive(Error, Debug)]
 enum GizmoError {
     #[error("A Gizmo error")]
@@ -35,8 +38,12 @@ fn place_gizmo() -> Result<(), &'static str> {
 }
 
 #[quick_sysfail]
-fn delete_gizmo(time: Res<Time>) {
+fn delete_gizmo(time: Res<Time>, mut query: Query<&mut Transform>, foos: Query<Entity, With<Foo>>) {
     println!("delete time is: {}", time.elapsed_seconds());
+    for foo in &foos {
+        let mut trans = query.get_mut(foo).ok()?;
+        trans.translation += Vec3::Y;
+    }
     let _ = None?;
     println!("This will never print");
 }

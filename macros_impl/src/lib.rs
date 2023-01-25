@@ -245,7 +245,7 @@ impl ChainStyle {
             .inputs
             .extend(self.handler_inputs(system_output).expect("7"));
         ast.block = syn::parse2(quote! { {
-                let original_system = move || #system_output #system_body ;
+                let mut original_system = move || #system_output #system_body ;
                 let #result = original_system();
                 #chain_body
         } })
