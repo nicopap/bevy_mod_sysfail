@@ -21,7 +21,7 @@ enum GizmoError {
     Error,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, SystemLabel)]
+#[derive(Debug, PartialEq, Eq, Hash, SystemSet, Clone)]
 enum TransformGizmoSystem { Drag, Place }
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
         .add_system(
             drag_gizmo
                 .pipe(print_gizmo_error)
-                .label(TransformGizmoSystem::Drag),
+                .in_set(TransformGizmoSystem::Drag),
         )
         .add_system(
             delete_gizmo
@@ -39,7 +39,7 @@ fn main() {
         .add_system(
             place_gizmo
                 .pipe(print_gizmo_error)
-                .label(TransformGizmoSystem::Place)
+                .in_set(TransformGizmoSystem::Place)
                 .after(TransformGizmoSystem::Drag),
         );
     app.update();
@@ -207,11 +207,13 @@ log level of a failure. Use the `warn`, `trace`, `debug`, `silent`,
 
 * `1.0.0`: Update to bevy `0.9`
 * `1.1.0`: Allow usage of mutable queries (oops)
+* `2.0.0`: **Breaking**: Update to bevy `0.10`
 
 ### Version Matrix
 
 | bevy | latest supporting version      |
 |------|--------|
+| 0.10 | 2.0.0 |
 | 0.9  | 1.1.0 |
 | 0.8  | 0.1.0 |
 
