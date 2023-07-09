@@ -208,11 +208,13 @@ log level of a failure. Use the `warn`, `trace`, `debug`, `silent`,
 * `1.0.0`: Update to bevy `0.9`
 * `1.1.0`: Allow usage of mutable queries (oops)
 * `2.0.0`: **Breaking**: Update to bevy `0.10`
+* `3.0.0`: **Breaking**: Update to bevy `0.11`
 
 ### Version Matrix
 
 | bevy | latest supporting version      |
 |------|--------|
+| 0.11 | 3.0.0 |
 | 0.10 | 2.0.0 |
 | 0.9  | 1.1.0 |
 | 0.8  | 0.1.0 |
@@ -224,8 +226,8 @@ Copyright © 2022 Nicola Papale
 This software is licensed under Apache 2.0.
 
 
-[`FailureMode`]: https://docs.rs/bevy_mod_sysfail/1.1.0/bevy_mod_sysfail/trait.FailureMode.html
-[`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/1.1.0/bevy_mod_sysfail/trait.LogLevelOverride.html
-[`Failure`]: https://docs.rs/bevy_mod_sysfail/1.1.0/bevy_mod_sysfail/trait.Failure.html
-[`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/1.1.0/bevy_mod_sysfail/attr.quick_sysfail.html
-[`sysfail`]: https://docs.rs/bevy_mod_sysfail/1.1.0/bevy_mod_sysfail/attr.sysfail.html
+[`FailureMode`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.FailureMode.html
+[`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.LogLevelOverride.html
+[`Failure`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.Failure.html
+[`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/attr.quick_sysfail.html
+[`sysfail`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/attr.sysfail.html

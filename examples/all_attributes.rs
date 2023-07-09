@@ -15,9 +15,7 @@ enum GizmoError {
 fn main() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_system(drag_gizmo)
-        .add_system(delete_gizmo.after(place_gizmo))
-        .add_system(place_gizmo.after(drag_gizmo));
+        .add_systems(Update, (drag_gizmo, (delete_gizmo, place_gizmo)).chain());
     app.update();
 }
 
