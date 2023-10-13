@@ -15,6 +15,6 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0.38", features = ["proc-macro", "parsing", "clone-impls"] }
+syn = { version = "2.0.38", features = ["full", "proc-macro", "parsing", "clone-impls"] }
 proc-macro2 = "1.0.69"
 quote = "1.0.33"
