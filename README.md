@@ -201,7 +201,7 @@ See [CHANGELOG.md](./CHANGELOG.md)
 
 | bevy | latest supporting version      |
 |------|--------|
-| 0.11 | 4.1.0 |
+| 0.11 | 4.3.0 |
 | 0.10 | 2.0.0 |
 | 0.9  | 1.1.0 |
 | 0.8  | 0.1.0 |
