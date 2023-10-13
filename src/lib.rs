@@ -145,7 +145,9 @@ pub trait FailureMode {
     /// Deprecated: this is ignored.
     #[deprecated(since = "4.0.0", note = "This is ignored")]
     #[allow(deprecated)]
-    fn log_level(&self) -> LogLevel;
+    fn log_level(&self) -> LogLevel {
+        LogLevel::Error
+    }
 
     /// How long an error must not be produced in order to be displayed again.
     ///
@@ -168,7 +170,9 @@ pub trait FailureMode {
         since = "4.0.0",
         note = "This crate now directly uses the fmt::Display impl on the error."
     )]
-    fn display(&self) -> Option<String>;
+    fn display(&self) -> Option<String> {
+        None
+    }
 
     /// What happens, by default this logs based on the return value of
     /// [`FailureMode::log_level`].
