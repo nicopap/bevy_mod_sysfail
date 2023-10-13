@@ -14,13 +14,13 @@ enum GizmoError {
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
+    app.add_plugins((MinimalPlugins, bevy::log::LogPlugin::default()))
         .add_systems(Update, (drag_gizmo, (delete_gizmo, place_gizmo)).chain());
     app.update();
 }
 
 #[sysfail(log)]
-fn drag_gizmo(time: Res<Time>) -> Result<(), anyhow::Error> {
+fn drag_gizmo(time: Res<Time>) -> anyhow::Result<()> {
     println!("drag time is: {}", time.elapsed_seconds());
     let _ = Err(GizmoError::Error)?;
     println!("This will never print");
@@ -35,6 +35,7 @@ fn place_gizmo() -> Result<(), &'static str> {
     Ok(())
 }
 
+/// This also has some doc
 #[quick_sysfail]
 fn delete_gizmo(time: Res<Time>, mut query: Query<&mut Transform>, foos: Query<Entity, With<Foo>>) {
     println!("delete time is: {}", time.elapsed_seconds());

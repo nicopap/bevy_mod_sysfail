@@ -139,15 +139,14 @@ implementing the [`Failure`] trait. [`Failure`] is implemented for
 
 - `log`: print the `Err` of the `Result` return value, prints a very
   generic "A none value" when the return type is `Option`.
-  By default, most things are logged at `Warn` level, but it is
-  possible to customize the log level based on the error value.
+  By default, most things are logged at `error` level.
 - `log(level = "{silent,trace,debug,info,warn,error}")`: This forces
   logging of errors at a certain level (make sure to add the quotes)
-- `ignore`: This is like `log(level="silent")` but simplifies the
-  generated code.
+- `ignore`: This is a shortcut for `log(level = "silent")`
 
-Note that with `log`, the macro generates a new system with additional
-parameters.
+Note that when the level is not `"silent"`, `bevy_mod_sysfail` adds the
+`Res<Time>` and `Local<LoggedErrors>` system parameters to be able to supress
+repeating error messages.
 
 ### `quick_sysfail` attribute
 
@@ -189,32 +188,20 @@ Systems marked with the [`sysfail`] attribute **must** return a type implementin
 trait on your own error types, you can specify:
 
 - What constitutes "distinct" error types.
-- The log level of specific values.
 - How long an error must not be produced in order to be displayed again.
-
-- [ ] TODO: provide a derive macro that allows setting log level and cooldown.
 
 [`FailureMode`] is implemented for `Box<dyn Error>`, `anyhow::Error`, `()`
 and `&'static str`.
 
-#### `LogLevelOverride` trait
-
-[`LogLevelOverride`] is an extension trait that allows you to override the 
-log level of a failure. Use the `warn`, `trace`, `debug`, `silent`,
-`error` and `info` methods to specify the level of logging of a failure.
-
 ### Change log
 
-* `1.0.0`: Update to bevy `0.9`
-* `1.1.0`: Allow usage of mutable queries (oops)
-* `2.0.0`: **Breaking**: Update to bevy `0.10`
-* `3.0.0`: **Breaking**: Update to bevy `0.11`
+See [CHANGELOG.md](./CHANGELOG.md)
 
 ### Version Matrix
 
 | bevy | latest supporting version      |
 |------|--------|
-| 0.11 | 3.0.0 |
+| 0.11 | 4.0.0 |
 | 0.10 | 2.0.0 |
 | 0.9  | 1.1.0 |
 | 0.8  | 0.1.0 |
@@ -227,7 +214,6 @@ This software is licensed under Apache 2.0.
 
 
 [`FailureMode`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.FailureMode.html
-[`LogLevelOverride`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.LogLevelOverride.html
 [`Failure`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.Failure.html
 [`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/attr.quick_sysfail.html
 [`sysfail`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/attr.sysfail.html
