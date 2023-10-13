@@ -8,7 +8,7 @@ keywords = ["bevy", "tool", "macro", "error", "trait"]
 categories = ["game-development"]
 repository = "https://github.com/nicopap/bevy_mod_sysfail"
 exclude = ["assets", ".github"]
-version = "4.0.0"
+version = "4.1.0"
 edition = "2021"
 
 [dependencies]
@@ -16,7 +16,7 @@ bevy_utils = "0.11"
 bevy_log = "0.11"
 bevy_time = "0.11"
 bevy_ecs = "0.11"
-bevy_mod_sysfail_macros = { path = "./macros_impl", version = "4.0.0" }
+bevy_mod_sysfail_macros = { path = "./macros_impl", version = "4.1.0" }
 anyhow = { version = "1.0", default-features = false }
 
 [dev-dependencies]
