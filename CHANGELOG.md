@@ -1,3 +1,7 @@
+# `4.1.0`
+
+* fix macro dependency of the non-macro crate
+
 # `4.0.0`
 
 * Now the module reported in the error message is the one the system is in
