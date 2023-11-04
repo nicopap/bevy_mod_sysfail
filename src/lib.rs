@@ -248,7 +248,7 @@ pub trait Failure {
     {
         let error = self.failure()?;
         let cooldown = error.cooldown();
-        let now = time.raw_elapsed();
+        let now = time.elapsed();
         let last_shown = logged_errors.0.insert(error.identify(), now);
         let should_log = last_shown.map_or(true, |d| now < d + cooldown);
         should_log.then_some(error)

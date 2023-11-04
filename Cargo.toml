@@ -12,15 +12,15 @@ version = "4.3.0"
 edition = "2021"
 
 [dependencies]
-bevy_utils = "0.11"
-bevy_log = "0.11"
-bevy_time = "0.11"
-bevy_ecs = "0.11"
+bevy_utils = "0.12"
+bevy_log = "0.12"
+bevy_time = "0.12"
+bevy_ecs = "0.12"
 bevy_mod_sysfail_macros = { path = "./macros_impl", version = "4.2.0" }
 anyhow = { version = "1.0", default-features = false }
 
 [dev-dependencies]
-bevy = { version = "0.11", default-features = false }
+bevy = { version = "0.12", default-features = false }
 anyhow = "1.0"
 thiserror = "1.0"
 
@@ -29,6 +29,6 @@ dependent-version = "upgrade"
 
 [package.metadata.release]
 pre-release-replacements = [
-  {search="\\| 0.11 \\| [0-9.]* \\|",replace="| 0.11 | {{version}} |",file="README.md"},
+  {search="\\| 0.12 \\| [0-9.]* \\|",replace="| 0.12 | {{version}} |",file="README.md"},
 ]
 

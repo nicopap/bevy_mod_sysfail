@@ -26,22 +26,19 @@ enum TransformGizmoSystem { Drag, Place }
 
 fn main() {
     let mut app = App::new();
-    app.add_plugin(bevy::time::TimePlugin)
-        .add_system(
+    app.add_plugins(bevy::time::TimePlugin)
+        .add_systems(Update, (
             drag_gizmo
                 .pipe(print_gizmo_error)
                 .in_set(TransformGizmoSystem::Drag),
-        )
-        .add_system(
             delete_gizmo
                 .pipe(|In(_)| {})
-                .after(TransformGizmoSystem::Place))
-        .add_system(
+                .after(TransformGizmoSystem::Place),
             place_gizmo
                 .pipe(print_gizmo_error)
                 .in_set(TransformGizmoSystem::Place)
                 .after(TransformGizmoSystem::Drag),
-        );
+        ));
     app.update();
 }
 
@@ -93,10 +90,12 @@ enum GizmoError {
 
 fn main() {
     let mut app = App::new();
-    app.add_plugin(bevy::time::TimePlugin)
-        .add_system(drag_gizmo)
-        .add_system(delete_gizmo.after(place_gizmo))
-        .add_system(place_gizmo.after(drag_gizmo));
+    app.add_plugins(bevy::time::TimePlugin)
+        .add_systems(Update, (
+            drag_gizmo,
+            delete_gizmo.after(place_gizmo),
+            place_gizmo.after(drag_gizmo)
+        ));
     app.update();
 }
 
@@ -201,6 +200,7 @@ See [CHANGELOG.md](./CHANGELOG.md)
 
 | bevy | latest supporting version      |
 |------|--------|
+| 0.12 | 5.0.0 |
 | 0.11 | 4.3.0 |
 | 0.10 | 2.0.0 |
 | 0.9  | 1.1.0 |
