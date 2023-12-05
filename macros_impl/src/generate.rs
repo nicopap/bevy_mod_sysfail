@@ -67,7 +67,7 @@ const QUICK_MSG: &str =
 const NO_RET_MSG: &str = "sysfail systems must have a return type.\n\
  - Do not use `sysfail` if the system doesn't fail\n\
  - Add the `Result` type if the system can fail, it will be removed by the macro\n\
- - Use the `quick_sysfail` if the return type is `Option<()>` and you just want to skip error handling";
+ - Use `quick_sysfail` if the return type is `Option<()>` and you just want to skip error handling";
 
 fn option_trailing_stmt() -> syn::Stmt {
     syn::parse_quote!(return ::core::option::Option::Some(());)
@@ -77,10 +77,10 @@ fn option_ret_type() -> syn::ReturnType {
 }
 fn extra_params(ret_type: &syn::Type) -> TokenStream {
     quote! {
-        __sysfail_time: ::bevy_mod_sysfail::__macro::TimeParam,
-        mut __sysfail_logged_errors: ::bevy_mod_sysfail::__macro::LoggedErrorsParam<#ret_type>,
+        __sysfail_params: ::bevy_mod_sysfail::__macro::StaticSystemParam<<#ret_type as ::bevy_mod_sysfail::__macro::Failure>::Param>,
     }
 }
+
 pub fn sysfail(config: FnConfig, function: syn::ItemFn) -> TokenStream {
     match sysfail_inner(config, function) {
         Ok(token_stream) => token_stream,
@@ -88,7 +88,7 @@ pub fn sysfail(config: FnConfig, function: syn::ItemFn) -> TokenStream {
     }
 }
 fn sysfail_inner(config: FnConfig, mut function: syn::ItemFn) -> syn::Result<TokenStream> {
-    use MacroLogLevel::{Quick, Silent};
+    use MacroLogLevel::Quick;
 
     if matches!(config.level, Quick) {
         if !matches!(function.sig.output, syn::ReturnType::Default) {
@@ -111,36 +111,17 @@ fn sysfail_inner(config: FnConfig, mut function: syn::ItemFn) -> syn::Result<Tok
     if !function.sig.inputs.is_empty() && !function.sig.inputs.trailing_punct() {
         function.sig.inputs.push_punct(syn::token::Comma::default());
     }
-    let extra_params = (!matches!(config.level, Quick | Silent)).then(|| extra_params(ret_type));
+    let extra_params = extra_params(ret_type);
     let params = &function.sig.inputs;
     let params_gen = &function.sig.generics.params;
     let where_gen = &function.sig.generics.where_clause;
     let attrs = &function.attrs;
-    let log_error = log_error(config.level);
     Ok(quote! {
         #(#attrs)*
         #vis fn #fn_ident <#params_gen> (#params #extra_params) #where_gen {
             let mut inner_system = move || -> #ret_type { #(#body)* };
             let result = inner_system();
-            #log_error
+            ::bevy_mod_sysfail::Failure::get_error(result, __sysfail_params);
         }
     })
-}
-
-fn log_error(level: MacroLogLevel) -> TokenStream {
-    let simple_log = |level: TokenStream| {
-        quote! {
-            if let Some(error) = ::bevy_mod_sysfail::Failure::get_error(result, &*__sysfail_time, &mut __sysfail_logged_errors) {
-                ::bevy_mod_sysfail::__macro::#level("{error}");
-            }
-        }
-    };
-    match level {
-        MacroLogLevel::Trace => simple_log(quote!(trace!)),
-        MacroLogLevel::Debug => simple_log(quote!(debug!)),
-        MacroLogLevel::Info => simple_log(quote!(info!)),
-        MacroLogLevel::Warn => simple_log(quote!(warn!)),
-        MacroLogLevel::Error => simple_log(quote!(error!)),
-        MacroLogLevel::Silent | MacroLogLevel::Quick => quote!(let _ = result;),
-    }
 }

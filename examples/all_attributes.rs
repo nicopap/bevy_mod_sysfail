@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_sysfail::macros::*;
+use bevy_mod_sysfail::*;
 
 use thiserror::Error;
 
@@ -19,16 +19,16 @@ fn main() {
     app.update();
 }
 
-#[sysfail(log)]
-fn drag_gizmo(time: Res<Time>) -> anyhow::Result<()> {
+#[sysfail(Log<GizmoError>)]
+fn drag_gizmo(time: Res<Time>) {
     println!("drag time is: {}", time.elapsed_seconds());
     let _ = Err(GizmoError::Error)?;
     println!("This will never print");
     Ok(())
 }
 
-#[sysfail(log(level = "info"))]
-fn place_gizmo() -> Result<(), &'static str> {
+#[sysfail]
+fn place_gizmo() -> Result<(), Log<&'static str, Info>> {
     let () = Result::<(), &'static str>::Ok(())?;
     println!("this line should actually show up");
     let _ = Err("Ah, some creative use of info logging I see")?;
