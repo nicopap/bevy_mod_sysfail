@@ -202,6 +202,12 @@ fn quit_app_on_error() { /* ... */ }
 fn do_not_care_about_failure() { /* ... */ }
 ```
 
+### Exclusive systems
+
+For exclusive systems, use the `#[exclusive_sysfail]` macro. Note that only
+`Failure<Param = ()>` work with exclusive systems. This excludes `Log`, so
+make sure to use `LogSimply` instead.
+
 ### Custom handling
 
 `bevy_mod_sysfail` is not limited to the predefined set of `Failure`s, you can

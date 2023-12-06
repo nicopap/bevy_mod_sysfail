@@ -15,6 +15,9 @@ use bevy_ecs::system::SystemParam;
 
 /// See the [`crate`]-level documentation for usage and examples.
 pub use bevy_mod_sysfail_macros::sysfail;
+
+/// See the [`crate`]-level documentation for usage and examples.
+pub use bevy_mod_sysfail_macros::exclusive_sysfail;
 pub use bevy_utils::tracing::{Callsite, Level};
 pub use dedup::Dedup;
 pub use log_levels::LogLevelModifier;
@@ -35,8 +38,7 @@ pub mod prelude {
     pub use crate::log::Log;
     pub use crate::log_levels::{Debug, Error, Info, Trace, Warn};
     pub use crate::log_simple::LogSimply;
-    pub use crate::sysfail;
-    pub use crate::Failure;
+    pub use crate::{exclusive_sysfail, sysfail, Failure};
 }
 
 /// Symbols for the `sysfail` attribute macro.

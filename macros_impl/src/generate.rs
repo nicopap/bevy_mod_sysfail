@@ -4,6 +4,7 @@ use syn::parse_quote;
 
 pub struct FnConfig {
     pub error_type: syn::Type,
+    pub exclusive: bool,
 }
 impl FnConfig {
     pub fn new() -> Self {
@@ -11,6 +12,7 @@ impl FnConfig {
             error_type: parse_quote![
                 ::bevy_mod_sysfail::prelude::Log<::std::boxed::Box<dyn ::std::error::Error>>
             ],
+            exclusive: false,
         }
     }
 }
@@ -67,12 +69,20 @@ fn sysfail_inner(config: &FnConfig, mut function: syn::ItemFn) -> syn::Result<To
     } else {
         quote!(None)
     };
+    let extra_param = (!config.exclusive) .then(||
+        quote!(__sysfail_params: #prefix::StaticSystemParam<<#ret_type as #prefix::Failure>::Param>)
+    );
+    let check_exclusive = if config.exclusive {
+        quote! {
+            fn Failure_has_UnitParam<F: Failure<Param=()>>() -> F::Param {}
+            let param_items = Failure_has_UnitParam::<#ret_type>();
+        }
+    } else {
+        quote!(let param_items = __sysfail_params.into_inner();)
+    };
     Ok(quote! {
         #(#attrs)*
-        #vis fn #fn_ident <#params_gen> (
-            #params
-            __sysfail_params: #prefix::StaticSystemParam<<#ret_type as #prefix::Failure>::Param>
-        ) #where_gen {
+        #vis fn #fn_ident <#params_gen> (#params #extra_param) #where_gen {
             use ::bevy_mod_sysfail::Failure;
             let mut inner_system = move || -> ::core::result::Result<(), #ret_type> {
                 #(#body)*;
@@ -80,7 +90,8 @@ fn sysfail_inner(config: &FnConfig, mut function: syn::ItemFn) -> syn::Result<To
             };
             if let Err(err) = inner_system() {
                 static CALLSITE: Option<#prefix::DefaultCallsite> = #callsite;
-                err.handle_error(__sysfail_params.into_inner(), CALLSITE.as_ref());
+                #check_exclusive
+                err.handle_error(param_items, CALLSITE.as_ref());
             }
         }
     })

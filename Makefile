@@ -8,8 +8,10 @@ CLIPPY_ARGS=-- -D clippy::all -D clippy::pedantic -D clippy::nursery \
 
 check:
 	cargo check --examples
+
 run:
-	cargo run --example custom_failure
+	cargo run --example all_attributes
+
 pre-hook:
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 	cargo clippy --workspace $(CLIPPY_ARGS)

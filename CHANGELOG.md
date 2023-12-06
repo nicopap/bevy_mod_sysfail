@@ -22,6 +22,8 @@ Major **Breaking** release.
 - Added example showing how to extend with your own behavior the `Failure` trait.
 - Added the system name to the log message's "target" field (by default, this is
   the bit of text before the "ERROR" colored text)
+- Added `#[exclusive_sysfail]`, works like `#[sysfail]` but is fully supported
+  by exclusive systems. It only supports `Failure`s where `Param = ()`
 
 # `4.1.0`
 

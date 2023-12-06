@@ -22,7 +22,11 @@ impl Dedup for GizmoError {
 fn main() {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, bevy::log::LogPlugin::default()))
-        .add_systems(Update, (drag_gizmo, (delete_gizmo, place_gizmo)).chain());
+        .add_systems(
+            Update,
+            (drag_gizmo, exclusive_system, (delete_gizmo, place_gizmo)).chain(),
+        );
+    app.update();
     app.update();
 }
 
@@ -38,6 +42,15 @@ fn place_gizmo() {
     let () = Result::<(), &'static str>::Ok(())?;
     println!("this line should actually show up");
     let _ = Err("Ah, some creative use of info logging I see")?;
+}
+
+#[exclusive_sysfail(LogSimply<anyhow::Error, Error>)]
+fn exclusive_system(_: &mut World, mut has_printed: Local<bool>) {
+    if *has_printed {
+        return Ok(());
+    }
+    *has_printed = true;
+    let _ = Err(anyhow::anyhow!("We simply logged this error"))?;
 }
 
 /// This also has some doc
