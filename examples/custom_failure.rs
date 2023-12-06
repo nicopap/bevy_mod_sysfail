@@ -1,3 +1,15 @@
+/// Define a custom [`Failure`] implementation.
+///
+/// This uses the [`bevy_debug_text_overlay`] crate to print on screen the text
+/// of the error message.
+///
+/// Note that you would usually use the `screen_print!` macro from `bevy_debug_text_overlay`,
+/// but here, we need special handling so that each individual system has its
+/// own "slot" in the `bevy_debug_text_overlay` history, but also to display
+/// the correct file/line number in the text showing up on screen.
+///
+/// A `Failure` implementation that doesn't care about the origin of an error
+/// doesn't need to care about this though.
 use std::fmt;
 use std::marker::PhantomData;
 

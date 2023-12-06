@@ -11,6 +11,9 @@ exclude = ["assets", ".github"]
 version = "5.0.0"
 edition = "2021"
 
+[workspace]
+members = ["macros_impl"]
+
 [features]
 default = ["full"]
 full = ["dep:bevy"]

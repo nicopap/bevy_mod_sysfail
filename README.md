@@ -161,7 +161,7 @@ enum MyCustomError {
     Error,
 }
 
-// Equivalent to #[sysfail(Box<dyn std::error::Error>)]
+// Equivalent to #[sysfail(Log<Box<dyn std::error::Error>>)]
 #[sysfail]
 fn generic_failure() { /* ... */ }
 
