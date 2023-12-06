@@ -13,8 +13,8 @@ run:
 	cargo run --example all_attributes
 
 pre-hook:
-	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
-	cargo clippy --workspace $(CLIPPY_ARGS)
 	cargo fmt --all -- --check
-	cargo clippy --workspace --no-default-features
-	cargo test -j12
+	cargo clippy --workspace --no-default-features $(CLIPPY_ARGS)
+	cargo clippy --workspace $(CLIPPY_ARGS)
+	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+	cargo test --workspace -j12

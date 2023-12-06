@@ -1,0 +1,39 @@
+name: Continous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLORS: always
+
+jobs:
+  clippy_fmt_docs_check:
+    name: Check clippy lints, formatting and docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Install alsa and udev
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+
+      - name: Check clippy with no default features
+        run: cargo clippy --no-default-features --workspace -- --deny clippy::all
+
+      - name: Check clippy
+        run: cargo clippy --workspace -- --deny clippy::all
+
+      - name: Check docs
+        run: cargo doc --workspace --no-deps
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+
+      - name: Run tests
+        run: cargo test --workspace
