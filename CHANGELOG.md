@@ -3,23 +3,25 @@
 Major **Breaking** release.
 
 - Removed all deprecated methods
-- Replace the `log = "foo"` syntax by `Log<ErrorType, Foo>`.
 - Remove `#[quick_sysfail]` in favor of `#[sysfail(Ignore)]`
-- Remove support for `Option`.
+- Remove support for `Option<()>`. Consider replacing `option?` by `option.ok(())?`
+- Replace the `log = "foo"` syntax by `Log<ErrorType, Foo>`.
 - Automatically add return type to system. This means that you should remove
   the return type from your `#[sysfail]` systems.
 - `Failure` is now a trait on the **error type** returned by the `#[sysfail]`
   system, rather than the whole return type.
 - `Failure` now has an associated type: `Param`. It allows accessing arbitrary
   system parameters in the error handling code.
+- Renamed `FailureMode` to `Dedup`.
 - Now `bevy_mod_sysfail` directly depends on `bevy`, rather than its subcrates
 - Added the `full` features, enabled by default. Disabling removes the `bevy`
   dependency, to only depend on `bevy_ecs`, but at the cost of removing
   the `Log` `Failure` definition.
-- Renamed `FailureMode` to `Dedup`.
 - Added the `Emit` `Failure`, which sends `Err`s as bevy `Event`s.
 - Added `LogSimply`, a variant of `Log` that works without `Res<Time>`
 - Added example showing how to extend with your own behavior the `Failure` trait.
+- Added the system name to the log message's "target" field (by default, this is
+  the bit of text before the "ERROR" colored text)
 
 # `4.1.0`
 
