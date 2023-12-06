@@ -9,7 +9,7 @@ Decorate your bevy system with the [`sysfail`] macro attribute to handle failure
 
 #### Before
 
-```rust
+```rust,no_run
 use bevy::prelude::*;
 use bevy::utils::Duration;
 
@@ -76,9 +76,9 @@ fn delete_gizmo(time: Res<Time>) -> Option<()> {
 
 #### After
 
-```rust
+```rust,no_run
 use bevy::prelude::*;
-use bevy_mod_sysfail::macros::*;
+use bevy_mod_sysfail::prelude::*;
 
 use thiserror::Error;
 
@@ -99,26 +99,24 @@ fn main() {
     app.update();
 }
 
-#[sysfail(log)]
-fn drag_gizmo(time: Res<Time>) -> Result<(), anyhow::Error> {
+#[sysfail]
+fn drag_gizmo(time: Res<Time>) {
     println!("drag time is: {}", time.elapsed_seconds());
     let _ = Err(GizmoError::Error)?;
     println!("This will never print");
-    Ok(())
 }
 
-#[sysfail(log(level = "info"))]
-fn place_gizmo() -> Result<(), &'static str> {
+#[sysfail(Log<&'static str, Info>)]
+fn place_gizmo() {
     let () = Result::<(), &'static str>::Ok(())?;
     println!("this line should actually show up");
     let _ = Err("Ah, some creative use of info logging I see")?;
-    Ok(())
 }
 
-#[quick_sysfail]
+#[sysfail(Ignore)]
 fn delete_gizmo(time: Res<Time>) {
     println!("delete time is: {}", time.elapsed_seconds());
-    let _ = None?;
+    let _ = Err(342_i32)?;
     println!("This will never print");
 }
 ```
@@ -131,70 +129,88 @@ site, and not when adding to the app. As a result, it's easy to see at a glance
 what kind of error handling is happening in the system, it also allows using
 the system name as a label in system dependency specification.
 
-The [`sysfail`] attribute can only be used on systems returning a type
-implementing the [`Failure`] trait. [`Failure`] is implemented for 
-`Result<(), impl FailureMode>` and `Option<()>`.
-[`sysfail`] takes a single argument, it is one of the following:
+`sysfail(E)` systems return a value of type `Result<(), E>`. The return type
+is added by the macro, so do not add it yourself!
 
-- `log`: print the `Err` of the `Result` return value, prints a very
-  generic "A none value" when the return type is `Option`.
-  By default, most things are logged at `error` level.
-- `log(level = "{silent,trace,debug,info,warn,error}")`: This forces
-  logging of errors at a certain level (make sure to add the quotes)
-- `ignore`: This is a shortcut for `log(level = "silent")`
+`E` is a type that implements the `Failure` trait. `bevy_mod_sysfail` exports
+several types that implement `Failure`:
 
-Note that when the level is not `"silent"`, `bevy_mod_sysfail` adds the
-`Res<Time>` and `Local<LoggedErrors>` system parameters to be able to supress
-repeating error messages.
+- [`Log<Err, Lvl = Warn>`][`Log`]: Will log `Err` to the tracing logger.
+   - The first type parameter `Err` implements the [`Dedup`] trait. You can
+     implement `Dedup` for your own types, but you can always use the
+     `anyhow::Error`, `Box<dyn std::error::Error>` and `&'static str` types,
+     as those already implement `Dedup`.
+   - The second type parameter specifies the level of the log. It is optional
+     and by default it is `Warn`
+- [`LogSimply`]: Is similar to `Log`, but without deduplication.
+- [`Emit<Ev>`][`Emit`]: Will emit the `Ev` bevy [`Event`] whenever the system returns an `Err`
+- [`Ignore`]: Ignore errors, do as if nothing happened.
 
-### `quick_sysfail` attribute
-
-[`quick_sysfail`] is like `sysfail(ignore)` but only works on `Option<()>`.
-This attribute, unlike `sysfail` allows you to elide the final `Some(())`
-and the type signature of the system. It's for the maximally lazy, like
-me.
+Example usages:
 
 ```rust
-use bevy_mod_sysfail::macros::*;
+use bevy::prelude::*;
+use bevy_mod_sysfail::prelude::*;
+use thiserror::Error;
 
-#[sysfail(ignore)]
-fn place_gizmo() -> Option<()> {
-  // …
-  Some(())
+// -- Log a value --
+
+#[derive(Error, Debug)]
+enum MyCustomError {
+    #[error("A Custom error")]
+    Error,
 }
-// equivalent to:
-#[quick_sysfail]
-fn quick_place_gizmo() {
-  // …
+
+// Equivalent to #[sysfail(Box<dyn std::error::Error>)]
+#[sysfail]
+fn generic_failure() { /* ... */ }
+
+#[sysfail(Log<&'static str>)]
+fn log_a_str_message() {
+    let _ = Err("Yep, just like that")?;
 }
+
+#[sysfail(Log<anyhow::Error>)]
+fn log_an_anyhow_error() {
+    let _ = Err(MyCustomError::Error)?;
+}
+
+#[sysfail(LogSimply<MyCustomError, Trace>)]
+fn log_trace_on_failure() { /* ... */ }
+
+#[sysfail(LogSimply<MyCustomError, Error>)]
+fn log_error_on_failure() { /* ... */ }
+
+// -- Emit an event --
+use bevy::app::AppExit;
+
+#[derive(Event)]
+enum ChangeMenu {
+    Main,
+    Tools,
+}
+
+#[sysfail(Emit<ChangeMenu>)]
+fn change_menu() { /* ... */ }
+
+#[sysfail(Emit<AppExit>)]
+fn quit_app_on_error() { /* ... */ }
+
+// -- Ignore all errors --
+
+#[sysfail(Ignore)]
+fn do_not_care_about_failure() { /* ... */ }
 ```
 
-### Traits
+### Custom handling
 
-How error is handled is not very customizable, but there is a few behaviors
-controllable by the user, always through traits.
-
-#### `Failure` trait
-
-[`Failure`] is implemented for `Result<(), impl FailureMode>` and `Option<()>`.
-
-Systems marked with the [`sysfail`] attribute **must** return a type implementing
-[`Failure`].
-
-#### `FailureMode` trait
-
-[`FailureMode`] defines how the failure is handled. By implementing the
-trait on your own error types, you can specify:
-
-- What constitutes "distinct" error types.
-- How long an error must not be produced in order to be displayed again.
-
-[`FailureMode`] is implemented for `Box<dyn Error>`, `anyhow::Error`, `()`
-and `&'static str`.
+`bevy_mod_sysfail` is not limited to the predefined set of `Failure`s, you can
+define your own by implementing it yourself.
+See the [custom_failure example] for sample code.
 
 ### Change log
 
-See [CHANGELOG.md](./CHANGELOG.md)
+See the [CHANGELOG].
 
 ### Version Matrix
 
@@ -212,8 +228,13 @@ Copyright © 2022 Nicola Papale
 
 This software is licensed under Apache 2.0.
 
-
-[`FailureMode`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.FailureMode.html
-[`Failure`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/trait.Failure.html
-[`quick_sysfail`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/attr.quick_sysfail.html
-[`sysfail`]: https://docs.rs/bevy_mod_sysfail/latest/bevy_mod_sysfail/attr.sysfail.html
+[CHANGELOG]: https://github.com/nicopap/bevy_mod_sysfail/blob/v5.0.0/CHANGELOG.md
+[custom_failure example]: https://github.com/nicopap/bevy_mod_sysfail/blob/v5.0.0/examples/custom_failure.rs
+[`Dedup`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/trait.Dedup.html
+[`Failure`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/trait.Failure.html
+[`sysfail`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/attr.sysfail.html
+[`Emit`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/prelude/struct.Emit.html
+[`Log`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/prelude/struct.Log.html
+[`LogSimply`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/prelude/struct.LogSimply.html
+[`Ignore`]: https://docs.rs/bevy_mod_sysfail/5.0.0/bevy_mod_sysfail/prelude/struct.Ignore.html
+[`Event`]: https://docs.rs/bevy/0.12/bevy/ecs/event/trait.Event.html

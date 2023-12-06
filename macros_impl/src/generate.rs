@@ -1,109 +1,40 @@
-use std::mem;
-
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::meta::ParseNestedMeta;
-
-#[derive(Clone, Copy)]
-enum MacroLogLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
-    Silent,
-    Quick,
-}
+use syn::parse_quote;
 
 pub struct FnConfig {
-    level: MacroLogLevel,
+    pub error_type: syn::Type,
 }
 impl FnConfig {
     pub fn new() -> Self {
-        Self { level: MacroLogLevel::Error }
-    }
-    pub fn quick() -> Self {
-        Self { level: MacroLogLevel::Quick }
-    }
-    pub fn parse(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
-        match () {
-            () if meta.path.is_ident("log") && meta.input.peek(syn::token::Paren) => {
-                meta.parse_nested_meta(|meta| self.parse_level(meta))
-            }
-            () if meta.path.is_ident("log") => Ok(()),
-            () if meta.path.is_ident("ignore") => {
-                self.level = MacroLogLevel::Silent;
-                Ok(())
-            }
-            () => {
-                let msg = "Only the 'log' and 'ignore' meta attributes are supported for sysfail";
-                Err(meta.error(msg))
-            }
+        Self {
+            error_type: parse_quote![
+                ::bevy_mod_sysfail::prelude::Log<::std::boxed::Box<dyn ::std::error::Error>>
+            ],
         }
     }
-    fn parse_level(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
-        if !meta.path.is_ident("level") {
-            let msg = "Only the 'level' attribute is supported for sysfail(log(…))";
-            return Err(meta.error(msg));
-        }
-        let literal: syn::LitStr = meta.value()?.parse()?;
-        let ident: syn::Ident = literal.parse()?;
-        let msg = "invalid log level, available: silent, trace, debug, info, warn, error";
-        match () {
-            () if ident == "trace" => self.level = MacroLogLevel::Trace,
-            () if ident == "debug" => self.level = MacroLogLevel::Debug,
-            () if ident == "info" => self.level = MacroLogLevel::Info,
-            () if ident == "warn" => self.level = MacroLogLevel::Warn,
-            () if ident == "error" => self.level = MacroLogLevel::Error,
-            () if ident == "silent" => self.level = MacroLogLevel::Silent,
-            () => return Err(meta.error(msg)),
-        };
-        Ok(())
-    }
 }
 
-const QUICK_MSG: &str =
-    "quick_sysfail systems must have no return type, the macro adds Option<()>.";
-const NO_RET_MSG: &str = "sysfail systems must have a return type.\n\
- - Do not use `sysfail` if the system doesn't fail\n\
- - Add the `Result` type if the system can fail, it will be removed by the macro\n\
- - Use `quick_sysfail` if the return type is `Option<()>` and you just want to skip error handling";
+const QUICK_MSG: &str = "#[sysfail] systems have no return types.";
 
-fn option_trailing_stmt() -> syn::Stmt {
-    syn::parse_quote!(return ::core::option::Option::Some(());)
-}
-fn option_ret_type() -> syn::ReturnType {
-    syn::parse_quote!(-> ::core::option::Option<()>)
-}
-fn extra_params(ret_type: &syn::Type) -> TokenStream {
-    quote! {
-        __sysfail_params: ::bevy_mod_sysfail::__macro::StaticSystemParam<<#ret_type as ::bevy_mod_sysfail::__macro::Failure>::Param>,
-    }
+fn is_log(ty: &syn::Type) -> bool {
+    matches!(ty, syn::Type::Path(syn::TypePath{path, ..})
+        if path.segments.last().is_some_and(|p| p.ident.to_string().contains("Log"))
+    )
 }
 
-pub fn sysfail(config: FnConfig, function: syn::ItemFn) -> TokenStream {
+pub fn sysfail(config: &FnConfig, function: syn::ItemFn) -> TokenStream {
     match sysfail_inner(config, function) {
         Ok(token_stream) => token_stream,
         Err(syn_error) => syn_error.into_compile_error(),
     }
 }
-fn sysfail_inner(config: FnConfig, mut function: syn::ItemFn) -> syn::Result<TokenStream> {
-    use MacroLogLevel::Quick;
-
-    if matches!(config.level, Quick) {
-        if !matches!(function.sig.output, syn::ReturnType::Default) {
-            return Err(syn::Error::new_spanned(function, QUICK_MSG));
-        }
-        function.sig.output = option_ret_type();
+fn sysfail_inner(config: &FnConfig, mut function: syn::ItemFn) -> syn::Result<TokenStream> {
+    if !matches!(function.sig.output, syn::ReturnType::Default) {
+        return Err(syn::Error::new_spanned(function.sig.output, QUICK_MSG));
     }
-    let mut body = mem::take(&mut function.block.stmts);
-    if matches!(config.level, Quick) {
-        body.push(option_trailing_stmt());
-    }
-    let ret_type = match &function.sig.output {
-        syn::ReturnType::Default => return Err(syn::Error::new_spanned(function, NO_RET_MSG)),
-        syn::ReturnType::Type(_, ret_type) => &**ret_type,
-    };
+    let ret_type = &config.error_type;
+    let body = &function.block.stmts;
     let vis = &function.vis;
     let fn_ident = &function.sig.ident;
 
@@ -111,17 +42,46 @@ fn sysfail_inner(config: FnConfig, mut function: syn::ItemFn) -> syn::Result<Tok
     if !function.sig.inputs.is_empty() && !function.sig.inputs.trailing_punct() {
         function.sig.inputs.push_punct(syn::token::Comma::default());
     }
-    let extra_params = extra_params(ret_type);
     let params = &function.sig.inputs;
     let params_gen = &function.sig.generics.params;
     let where_gen = &function.sig.generics.where_clause;
     let attrs = &function.attrs;
+    let prefix = quote!(::bevy_mod_sysfail::__macro);
+    let callsite = if is_log(ret_type) {
+        quote! {Some({
+            static META: #prefix::Metadata<'static> = #prefix::Metadata::new(
+                concat!(file!(), ":", line!()),
+                concat!(module_path!(), "::", stringify!(#fn_ident)),
+                <#ret_type as #prefix::Failure>::LEVEL,
+                Some(file!()),
+                Some(line!()),
+                Some(concat!(module_path!(), "::", stringify!(#fn_ident))),
+                #prefix::FieldSet::new(&["message"], #prefix::Identifier(match &CALLSITE {
+                    None => panic!(),
+                    Some(c) => c,
+                })),
+                #prefix::metadata::Kind::EVENT,
+            );
+            #prefix::DefaultCallsite::new(&META)
+        })}
+    } else {
+        quote!(None)
+    };
     Ok(quote! {
         #(#attrs)*
-        #vis fn #fn_ident <#params_gen> (#params #extra_params) #where_gen {
-            let mut inner_system = move || -> #ret_type { #(#body)* };
-            let result = inner_system();
-            ::bevy_mod_sysfail::Failure::get_error(result, __sysfail_params);
+        #vis fn #fn_ident <#params_gen> (
+            #params
+            __sysfail_params: #prefix::StaticSystemParam<<#ret_type as #prefix::Failure>::Param>
+        ) #where_gen {
+            use ::bevy_mod_sysfail::Failure;
+            let mut inner_system = move || -> ::core::result::Result<(), #ret_type> {
+                #(#body)*;
+                return ::core::result::Result::Ok(());
+            };
+            if let Err(err) = inner_system() {
+                static CALLSITE: Option<#prefix::DefaultCallsite> = #callsite;
+                err.handle_error(__sysfail_params.into_inner(), CALLSITE.as_ref());
+            }
         }
     })
 }
