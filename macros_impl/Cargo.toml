@@ -8,7 +8,7 @@ keywords = ["bevy", "tool", "macro"]
 categories = ["game-development"]
 repository = "https://github.com/nicopap/bevy_mod_sysfail"
 exclude = ["assets", ".github"]
-version = "4.2.0"
+version = "5.0.0"
 edition = "2021"
 
 [lib]
