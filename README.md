@@ -222,6 +222,7 @@ See the [CHANGELOG].
 
 | bevy | latest supporting version      |
 |------|--------|
+| 0.13 | 6.0.0 |
 | 0.12 | 6.0.0 |
 | 0.11 | 4.3.0 |
 | 0.10 | 2.0.0 |
