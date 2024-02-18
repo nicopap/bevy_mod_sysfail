@@ -222,7 +222,7 @@ See the [CHANGELOG].
 
 | bevy | latest supporting version      |
 |------|--------|
-| 0.13 | 6.0.0 |
+| 0.13 | 7.0.0 |
 | 0.12 | 6.0.0 |
 | 0.11 | 4.3.0 |
 | 0.10 | 2.0.0 |
@@ -235,13 +235,13 @@ Copyright © 2022 Nicola Papale
 
 This software is licensed under Apache 2.0.
 
-[CHANGELOG]: https://github.com/nicopap/bevy_mod_sysfail/blob/v6.0.0/CHANGELOG.md
-[custom_failure example]: https://github.com/nicopap/bevy_mod_sysfail/blob/v6.0.0/examples/custom_failure.rs
-[`Dedup`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/trait.Dedup.html
-[`Failure`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/trait.Failure.html
-[`sysfail`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/attr.sysfail.html
-[`Emit`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/prelude/struct.Emit.html
-[`Log`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/prelude/struct.Log.html
-[`LogSimply`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/prelude/struct.LogSimply.html
-[`Ignore`]: https://docs.rs/bevy_mod_sysfail/6.0.0/bevy_mod_sysfail/prelude/struct.Ignore.html
+[CHANGELOG]: https://github.com/nicopap/bevy_mod_sysfail/blob/v7.0.0/CHANGELOG.md
+[custom_failure example]: https://github.com/nicopap/bevy_mod_sysfail/blob/v7.0.0/examples/custom_failure.rs
+[`Dedup`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/trait.Dedup.html
+[`Failure`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/trait.Failure.html
+[`sysfail`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/attr.sysfail.html
+[`Emit`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/prelude/struct.Emit.html
+[`Log`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/prelude/struct.Log.html
+[`LogSimply`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/prelude/struct.LogSimply.html
+[`Ignore`]: https://docs.rs/bevy_mod_sysfail/7.0.0/bevy_mod_sysfail/prelude/struct.Ignore.html
 [`Event`]: https://docs.rs/bevy/0.12/bevy/ecs/event/trait.Event.html
